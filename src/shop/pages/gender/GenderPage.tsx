@@ -1,8 +1,7 @@
-import type { Gender } from "@/mocks/products.mock";
+import { CustomPagination } from "@/components/custom/CustomPagination";
 import { CustomJumbotron } from "@/shop/components/CustomJumbotron";
 import { ProductsGrid } from "@/shop/components/ProductsGrid";
-import { useCustomSearchParams } from "@/shop/hooks/useCustomSearchParams";
-import { usePaginatedProducts } from "@/shop/hooks/usePaginatedProducts";
+import { useProducts } from "@/shop/hooks/useProducts";
 import { useParams } from "react-router";
 
 const genderLabels = new Map();
@@ -12,18 +11,16 @@ genderLabels.set("kid", "Niños");
 
 export const GenderPage = () => {
     const { gender } = useParams();
+    const { data } = useProducts();
+
     const genderLabel = genderLabels.get(gender) || "Todos";
 
-    const { getNumberUrlParamOrDefault } = useCustomSearchParams();
-    const page = getNumberUrlParamOrDefault("page", 1);
-    const limit = getNumberUrlParamOrDefault("limit", 6);
-
-    const { data: paginatedProducts } = usePaginatedProducts(page, limit, gender as Gender);
     return (
         <>
             <CustomJumbotron title={`Productos para ${genderLabel}`} />
 
-            <ProductsGrid products={paginatedProducts} />
+            <ProductsGrid products={data?.products || []} />
+            <CustomPagination totalPages={data?.pages || 1} />
         </>
     );
 };

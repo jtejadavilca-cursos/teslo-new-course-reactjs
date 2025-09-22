@@ -1,21 +1,17 @@
 import { CustomPagination } from "@/components/custom/CustomPagination";
 import { CustomJumbotron } from "@/shop/components/CustomJumbotron";
 import { ProductsGrid } from "@/shop/components/ProductsGrid";
-import { useCustomSearchParams } from "@/shop/hooks/useCustomSearchParams";
-import { usePaginatedProducts } from "@/shop/hooks/usePaginatedProducts";
+import { useProducts } from "@/shop/hooks/useProducts";
 
 export const HomePage = () => {
-    const { getNumberUrlParamOrDefault } = useCustomSearchParams();
-    const page = getNumberUrlParamOrDefault("page", 1);
-    const limit = getNumberUrlParamOrDefault("limit", 6);
+    const { data } = useProducts();
 
-    const { data: paginatedProducts } = usePaginatedProducts(page, limit);
     return (
         <>
             <CustomJumbotron title="Todos los productos" />
 
-            <ProductsGrid products={paginatedProducts} />
-            <CustomPagination totalPages={5} />
+            <ProductsGrid products={data?.products || []} />
+            <CustomPagination totalPages={data?.pages || 1} />
         </>
     );
 };

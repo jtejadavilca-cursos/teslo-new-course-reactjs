@@ -1,8 +1,10 @@
-import { useSearchParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 
 export const useCustomSearchParams = () => {
     let [searchParams, setSearchParams] = useSearchParams();
+    const useParamsValues = useParams();
 
+    // Query params
     const setUrlParam = (key: string, value?: string) => {
         if (!value || value.trim().length === 0) {
             searchParams.delete(key);
@@ -47,6 +49,13 @@ export const useCustomSearchParams = () => {
 
     const removeUrlParam = (key: string) => setUrlParam(key);
 
+    // Path variables
+    const getPathVariable = (key: string, defaultValue?: string): string | undefined => {
+        const value = useParamsValues[key];
+
+        return value || defaultValue;
+    };
+
     return {
         setUrlParam,
         getStringUrlParam,
@@ -56,5 +65,6 @@ export const useCustomSearchParams = () => {
         getBooleanUrlParam,
         removeUrlParam,
         clearUrlParams,
+        getPathVariable,
     };
 };
