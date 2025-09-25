@@ -3,40 +3,72 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CustomLogo } from "@/components/custom/CustomLogo";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { useState, type FormEvent } from "react";
+import { toast } from "sonner";
+import { useAuthStore } from "@/auth/store/auth.store";
 
 export const RegisterPage = () => {
+    const navigate = useNavigate();
+    const { register } = useAuthStore();
+    const [isPosting, setIsPosting] = useState(false);
+
+    const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setIsPosting(true);
+
+        const formData = new FormData(event.target as HTMLFormElement);
+        const password = formData.get("password") as string;
+        const repassword = formData.get("repassword") as string;
+        if (password !== repassword) {
+            toast.error("Passwords deben coincidir");
+            setIsPosting(false);
+            return;
+        }
+        const email = formData.get("email") as string;
+        const fullName = formData.get("fullName") as string;
+
+        const isRegistered = await register(email, password, fullName);
+        if (isRegistered) {
+            navigate("/");
+            return;
+        }
+
+        toast.error("Error in registration process");
+        setIsPosting(false);
+    };
+
     return (
         <div className="flex flex-col gap-6">
             <Card className="overflow-hidden p-0">
                 <CardContent className="grid p-0 md:grid-cols-2">
-                    <form className="p-6 md:p-8">
+                    <form className="p-6 md:p-8" onSubmit={handleRegister}>
                         <div className="flex flex-col gap-6">
                             <div className="flex flex-col items-center text-center">
                                 <CustomLogo />
                                 <p className="text-balance text-muted-foreground">Inicio de sesión</p>
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="fullname">Nombre completo</Label>
-                                <Input id="fullname" type="fullname" placeholder="Jhon Doe" required />
+                                <Label htmlFor="fullName">Nombre completo</Label>
+                                <Input id="fullName" name="fullName" type="fullName" placeholder="Jhon Doe" required />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="email">Correo</Label>
-                                <Input id="email" type="email" placeholder="mail@example.com" required />
+                                <Input id="email" name="email" type="email" placeholder="mail@example.com" required />
                             </div>
                             <div className="grid gap-2">
                                 <div className="flex items-center">
                                     <Label htmlFor="password">Contraseña</Label>
                                 </div>
-                                <Input id="password" type="password" required />
+                                <Input id="password" name="password" type="password" required />
                             </div>
                             <div className="grid gap-2">
                                 <div className="flex items-center">
                                     <Label htmlFor="repassword">Repetir contraseña</Label>
                                 </div>
-                                <Input id="repassword" type="repassword" required />
+                                <Input id="repassword" name="repassword" type="repassword" required />
                             </div>
-                            <Button type="submit" className="w-full">
+                            <Button type="submit" className="w-full" disabled={isPosting}>
                                 Registrar
                             </Button>
                             <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
