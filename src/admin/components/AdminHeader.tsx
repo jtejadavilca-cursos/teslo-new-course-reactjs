@@ -1,7 +1,28 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Search, Bell, MessageSquare, Settings } from "lucide-react";
+import { useCustomSearchParams } from "@/shop/hooks/useCustomSearchParams";
+import { Input } from "@/components/ui/input";
 
 export const AdminHeader: React.FC = () => {
+    const { clearUrlParams, setUrlParam, getStringUrlParam, removeUrlParam } = useCustomSearchParams();
+
+    const searchQuery = getStringUrlParam("query");
+
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const handleSearch = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key !== "Enter") return;
+
+        const queryValue = inputRef.current?.value;
+        if (!queryValue) {
+            removeUrlParam("query");
+            return;
+        }
+
+        clearUrlParams();
+        setUrlParam("query", queryValue);
+    };
+
     return (
         <header className="bg-white border-b border-gray-200 px-6 py-4 h-18">
             <div className="flex items-center justify-between">
@@ -12,10 +33,12 @@ export const AdminHeader: React.FC = () => {
                             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                             size={20}
                         />
-                        <input
-                            type="text"
-                            placeholder="Search..."
+                        <Input
+                            ref={inputRef}
+                            placeholder="Buscar productos..."
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            onKeyDown={handleSearch}
+                            defaultValue={searchQuery}
                         />
                     </div>
                 </div>
