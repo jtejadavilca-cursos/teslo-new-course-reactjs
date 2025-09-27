@@ -1,9 +1,11 @@
+import { useRef, useState } from "react";
+import { Link } from "react-router";
+import { useForm } from "react-hook-form";
 import { AdminTitle } from "@/admin/components/AdminTitle";
 import { Button } from "@/components/ui/button";
-import type { Product } from "@/interfaces/product.interface";
+import type { Product, Size } from "@/interfaces/product.interface";
 import { X, SaveAll, Tag, Plus, Upload } from "lucide-react";
-import { useState } from "react";
-import { Link } from "react-router";
+import { cn } from "@/lib/utils";
 
 interface Props {
     product: Product;
@@ -11,50 +13,64 @@ interface Props {
     subtitle: string;
 }
 
-const availableSizes = ["XS", "S", "M", "L", "XL", "XXL"];
+const availableSizes: Size[] = ["XS", "S", "M", "L", "XL", "XXL"];
 
 export const AdminProductForm = ({ product, title, subtitle }: Props) => {
     console.log({ product });
 
-    const [newTag, setNewTag] = useState("");
     const [dragActive, setDragActive] = useState(false);
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+        getValues,
+        setValue,
+        watch,
+    } = useForm({
+        defaultValues: product,
+    });
+
+    const selectedSizes = watch("sizes");
+    const addedTags = watch("tags");
+    const currentStock = watch("stock");
+
+    const inputRef = useRef<HTMLInputElement>(null);
 
     // const handleInputChange = (field: keyof Product, value: string | number) => {
     //     setProduct((prev) => ({ ...prev, [field]: value }));
     // };
 
     const addTag = () => {
-        // if (newTag.trim() && !product.tags.includes(newTag.trim())) {
-        //     setProduct((prev) => ({
-        //         ...prev,
-        //         tags: [...prev.tags, newTag.trim()],
-        //     }));
-        //     setNewTag("");
-        // }
+        const tag = inputRef.current?.value || "";
+
+        if (tag.trim().length === 0) return;
+
+        const tagsSet = new Set(getValues("tags"));
+        tagsSet.add(tag.trim());
+        setValue("tags", Array.from(tagsSet));
+
+        if (inputRef.current) {
+            inputRef.current.value = "";
+        }
     };
 
-    // const removeTag = (tagToRemove: string) => {
-    //     setProduct((prev) => ({
-    //         ...prev,
-    //         tags: prev.tags.filter((tag) => tag !== tagToRemove),
-    //     }));
-    // };
+    const removeTag = (tagToRemove: string) => {
+        const tagsSet = new Set(getValues("tags"));
+        tagsSet.delete(tagToRemove);
+        setValue("tags", Array.from(tagsSet));
+    };
 
-    // const addSize = (size: string) => {
-    //     if (!product.sizes.includes(size)) {
-    //         setProduct((prev) => ({
-    //             ...prev,
-    //             sizes: [...prev.sizes, size],
-    //         }));
-    //     }
-    // };
+    const addSize = (size: Size) => {
+        const sizeSet = new Set(getValues("sizes"));
+        sizeSet.add(size);
+        setValue("sizes", Array.from(sizeSet));
+    };
 
-    // const removeSize = (sizeToRemove: string) => {
-    //     setProduct((prev) => ({
-    //         ...prev,
-    //         sizes: prev.sizes.filter((size) => size !== sizeToRemove),
-    //     }));
-    // };
+    const removeSize = (sizeToRemove: Size) => {
+        const sizeSet = new Set(getValues("sizes"));
+        sizeSet.delete(sizeToRemove);
+        setValue("sizes", Array.from(sizeSet));
+    };
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();
@@ -78,8 +94,15 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
         const files = e.target.files;
         console.log(files);
     };
+
+    // TODO: to remove:
+    const onSubmit = (productLike: Product) => {
+        //handleSubmit
+        console.log("onSubmit productLike", productLike);
+    };
+
     return (
-        <>
+        <form onSubmit={handleSubmit(onSubmit)}>
             <div className="flex justify-between items-center">
                 <AdminTitle title={title} subtitle={subtitle} />
                 <div className="flex justify-end mb-10 gap-4">
@@ -112,11 +135,16 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                     </label>
                                     <input
                                         type="text"
-                                        // value={product.title}
-                                        // onChange={(e) => handleInputChange("title", e.target.value)}
-                                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                        {...register("title", { required: true })}
+                                        className={cn(
+                                            "w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200",
+                                            {
+                                                "border-red-500": errors.title,
+                                            }
+                                        )}
                                         placeholder="Título del producto"
                                     />
+                                    {errors.title && <p className="text-red-500 text-sm">El título es requerido</p>}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -126,11 +154,21 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                         </label>
                                         <input
                                             type="number"
-                                            // value={product.price}
-                                            // onChange={(e) => handleInputChange("price", parseFloat(e.target.value))}
-                                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            {...register("price", {
+                                                required: true,
+                                                min: 1,
+                                            })}
+                                            className={cn(
+                                                "w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200",
+                                                {
+                                                    "border-red-500": errors.price,
+                                                }
+                                            )}
                                             placeholder="Precio del producto"
                                         />
+                                        {errors.price && (
+                                            <p className="text-red-500 text-sm">El precio debe ser mayor a cero</p>
+                                        )}
                                     </div>
 
                                     <div>
@@ -139,11 +177,18 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                         </label>
                                         <input
                                             type="number"
-                                            // value={product.stock}
-                                            // onChange={(e) => handleInputChange("stock", parseInt(e.target.value))}
-                                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            {...register("stock", { required: true, min: 0 })}
+                                            className={cn(
+                                                "w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200",
+                                                {
+                                                    "border-red-500": errors.stock,
+                                                }
+                                            )}
                                             placeholder="Stock del producto"
                                         />
+                                        {errors.stock && (
+                                            <p className="text-red-500 text-sm">El stock debe ser mayor a cero</p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -153,11 +198,24 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                     </label>
                                     <input
                                         type="text"
-                                        // value={product.slug}
-                                        // onChange={(e) => handleInputChange("slug", e.target.value)}
-                                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                        {...register("slug", {
+                                            required: true,
+                                            validate: (value) =>
+                                                !/\s/.test(value) || "El slug no puede contener spacios en blanco",
+                                        })}
+                                        className={cn(
+                                            "w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200",
+                                            {
+                                                "border-red-500": errors.slug,
+                                            }
+                                        )}
                                         placeholder="Slug del producto"
                                     />
+                                    {errors.slug && (
+                                        <p className="text-red-500 text-sm">
+                                            {errors.slug.message || "El slug es requerido"}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div>
@@ -165,8 +223,7 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                         Género del producto
                                     </label>
                                     <select
-                                        // value={product.gender}
-                                        // onChange={(e) => handleInputChange("gender", e.target.value)}
+                                        {...register("gender")}
                                         className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                     >
                                         <option value="men">Hombre</option>
@@ -183,6 +240,7 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                     <textarea
                                         // value={product.description}
                                         // onChange={(e) => handleInputChange("description", e.target.value)}
+                                        {...register("description")}
                                         rows={5}
                                         className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
                                         placeholder="Descripción del producto"
@@ -197,14 +255,19 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
 
                             <div className="space-y-4">
                                 <div className="flex flex-wrap gap-2">
-                                    {product.sizes.map((size) => (
+                                    {availableSizes.map((size) => (
                                         <span
                                             key={size}
-                                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                                            className={cn(
+                                                "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200",
+                                                {
+                                                    hidden: !selectedSizes.includes(size),
+                                                }
+                                            )}
                                         >
                                             {size}
                                             <button
-                                                // onClick={() => removeSize(size)}
+                                                onClick={() => removeSize(size)}
                                                 className="ml-2 text-blue-600 hover:text-blue-800 transition-colors duration-200"
                                             >
                                                 <X className="h-3 w-3" />
@@ -217,14 +280,15 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                     <span className="text-sm text-slate-600 mr-2">Añadir tallas:</span>
                                     {availableSizes.map((size) => (
                                         <button
+                                            type="button"
                                             key={size}
-                                            // onClick={() => addSize(size)}
-                                            // disabled={product.sizes.includes(size)}
-                                            // className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
-                                            //     product.sizes.includes(size)
-                                            //         ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                            //         : "bg-slate-200 text-slate-700 hover:bg-slate-300 cursor-pointer"
-                                            // }`}
+                                            onClick={() => addSize(size)}
+                                            className={cn(
+                                                "px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 bg-slate-200 text-slate-700 hover:bg-slate-300 cursor-pointer",
+                                                {
+                                                    hidden: selectedSizes.includes(size),
+                                                }
+                                            )}
                                         >
                                             {size}
                                         </button>
@@ -239,7 +303,7 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
 
                             <div className="space-y-4">
                                 <div className="flex flex-wrap gap-2">
-                                    {product.tags.map((tag) => (
+                                    {addedTags.map((tag) => (
                                         <span
                                             key={tag}
                                             className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200"
@@ -247,7 +311,7 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                             <Tag className="h-3 w-3 mr-1" />
                                             {tag}
                                             <button
-                                                // onClick={() => removeTag(tag)}
+                                                onClick={() => removeTag(tag)}
                                                 className="ml-2 text-green-600 hover:text-green-800 transition-colors duration-200"
                                             >
                                                 <X className="h-3 w-3" />
@@ -259,9 +323,16 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
+                                        ref={inputRef}
                                         // value={newTag}
                                         // onChange={(e) => setNewTag(e.target.value)}
                                         // onKeyDown={(e) => e.key === "Enter" && addTag()}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " " || e.key === ",") {
+                                                addTag();
+                                                e.preventDefault();
+                                            }
+                                        }}
                                         placeholder="Añadir nueva etiqueta..."
                                         className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                     />
@@ -347,18 +418,15 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                     <span className="text-sm font-medium text-slate-700">Inventario</span>
                                     <span
                                         className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                            product.stock > 5
+                                            currentStock > 5
                                                 ? "bg-green-100 text-green-800"
-                                                : product.stock > 0
+                                                : currentStock > 0
                                                 ? "bg-yellow-100 text-yellow-800"
                                                 : "bg-red-100 text-red-800"
                                         }`}
                                     >
-                                        {product.stock > 5
-                                            ? "En stock"
-                                            : product.stock > 0
-                                            ? "Bajo stock"
-                                            : "Sin stock"}
+                                        {currentStock > 5 ? "En stock" : currentStock > 0 ? "Bajo stock" : "Sin stock"}{" "}
+                                        ({currentStock})
                                     </span>
                                 </div>
 
@@ -369,13 +437,13 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
 
                                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                                     <span className="text-sm font-medium text-slate-700">Tallas disponibles</span>
-                                    <span className="text-sm text-slate-600">{product.sizes.length} tallas</span>
+                                    <span className="text-sm text-slate-600">{selectedSizes.length} tallas</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </>
+        </form>
     );
 };
