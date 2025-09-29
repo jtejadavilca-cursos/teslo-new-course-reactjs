@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useForm } from "react-hook-form";
 import { AdminTitle } from "@/admin/components/AdminTitle";
@@ -11,14 +11,25 @@ interface Props {
     product: Product;
     title: string;
     subtitle: string;
+    isSaving: boolean;
+
+    // Methods
+    onSubmit: (productLike: Partial<Product> & { files?: File[] }) => Promise<void>;
 }
 
 const availableSizes: Size[] = ["XS", "S", "M", "L", "XL", "XXL"];
 
-export const AdminProductForm = ({ product, title, subtitle }: Props) => {
-    console.log({ product });
+interface FormInputs extends Product {
+    files?: File[];
+}
 
+export const AdminProductForm = ({ product, title, subtitle, isSaving, onSubmit }: Props) => {
     const [dragActive, setDragActive] = useState(false);
+
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+    const [productImages, setProductImages] = useState<string[]>(product.images);
+
     const {
         register,
         handleSubmit,
@@ -26,7 +37,7 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
         getValues,
         setValue,
         watch,
-    } = useForm({
+    } = useForm<FormInputs>({
         defaultValues: product,
     });
 
@@ -34,11 +45,13 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
     const addedTags = watch("tags");
     const currentStock = watch("stock");
 
-    const inputRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        setFilesToUpload([]);
+    }, [product]);
 
-    // const handleInputChange = (field: keyof Product, value: string | number) => {
-    //     setProduct((prev) => ({ ...prev, [field]: value }));
-    // };
+    useEffect(() => {
+        setProductImages(product.images);
+    }, [product]);
 
     const addTag = () => {
         const tag = inputRef.current?.value || "";
@@ -87,18 +100,38 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
         e.stopPropagation();
         setDragActive(false);
         const files = e.dataTransfer.files;
-        console.log(files);
+        if (!files || files.length === 0) return;
+
+        // local state for UI
+        setFilesToUpload((prev) => [...prev, ...Array.from(files)]);
+
+        // productLike in form
+        const currentFiles = getValues("files") || [];
+        setValue("files", [...currentFiles, ...Array.from(files)]);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
-        console.log(files);
+        if (!files || files.length === 0) return;
+
+        // local state for UI
+        setFilesToUpload((prev) => [...prev, ...Array.from(files)]);
+
+        // productLike in form
+        const currentFiles = getValues("files") || [];
+        setValue("files", [...currentFiles, ...Array.from(files)]);
     };
 
-    // TODO: to remove:
-    const onSubmit = (productLike: Product) => {
-        //handleSubmit
-        console.log("onSubmit productLike", productLike);
+    const handleRemoveImage = (fileName: string) => {
+        // local state for UI
+
+        // productLike in form
+        const currentProductImages = getValues("images") || [];
+        setValue("images", [...currentProductImages.filter((image) => image !== fileName)]);
+
+        // setValue("images", []);
+        product.images = product.images.filter((img) => img !== fileName);
+        setProductImages(product.images);
     };
 
     return (
@@ -106,14 +139,14 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
             <div className="flex justify-between items-center">
                 <AdminTitle title={title} subtitle={subtitle} />
                 <div className="flex justify-end mb-10 gap-4">
-                    <Button variant="outline">
+                    <Button variant="outline" type="button">
                         <Link to="/admin/products" className="flex items-center gap-2">
                             <X className="w-4 h-4" />
                             Cancelar
                         </Link>
                     </Button>
 
-                    <Button>
+                    <Button disabled={isSaving} type="submit">
                         <SaveAll className="w-4 h-4" />
                         Guardar cambios
                     </Button>
@@ -324,9 +357,6 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                     <input
                                         type="text"
                                         ref={inputRef}
-                                        // value={newTag}
-                                        // onChange={(e) => setNewTag(e.target.value)}
-                                        // onKeyDown={(e) => e.key === "Enter" && addTag()}
                                         onKeyDown={(e) => {
                                             if (e.key === "Enter" || e.key === " " || e.key === ",") {
                                                 addTag();
@@ -336,7 +366,7 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                         placeholder="Añadir nueva etiqueta..."
                                         className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                     />
-                                    <Button onClick={addTag} className="px-4 py-2rounded-lg ">
+                                    <Button type="button" onClick={addTag} className="px-4 py-2rounded-lg ">
                                         <Plus className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -383,7 +413,7 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                             <div className="mt-6 space-y-3">
                                 <h3 className="text-sm font-medium text-slate-700">Imágenes actuales</h3>
                                 <div className="grid grid-cols-2 gap-3">
-                                    {product.images.map((image, index) => (
+                                    {productImages.map((image, index) => (
                                         <div key={index} className="relative group">
                                             <div className="aspect-square bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center">
                                                 <img
@@ -392,11 +422,34 @@ export const AdminProductForm = ({ product, title, subtitle }: Props) => {
                                                     className="w-full h-full object-cover rounded-lg"
                                                 />
                                             </div>
-                                            <button className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveImage(image)}
+                                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                            >
                                                 <X className="h-3 w-3" />
                                             </button>
                                             <p className="mt-1 text-xs text-slate-600 truncate">{image}</p>
                                         </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Imágenes por cargar */}
+                            <div
+                                className={cn("mt-6 space-y-3", {
+                                    hidden: filesToUpload.length === 0,
+                                })}
+                            >
+                                <h3 className="text-sm font-medium text-slate-700">Imágenes por cargar</h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {filesToUpload.map((file, index) => (
+                                        <img
+                                            src={URL.createObjectURL(file)}
+                                            key={`${file.name}-${index}`}
+                                            alt="Product"
+                                            className="w-full h-full object-cover rounded-lg"
+                                        />
                                     ))}
                                 </div>
                             </div>

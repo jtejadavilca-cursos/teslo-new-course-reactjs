@@ -35,9 +35,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     isAdmin: () => {
         const roles = get().user?.roles || [];
 
-        console.log("get().user", get().user);
-        console.log("roles", roles);
-
         return roles.includes("admin");
     },
     login: async (email: string, password: string) => {

@@ -9,8 +9,6 @@ export const registerAction = async (email: string, password: string, fullName: 
             fullName,
         });
 
-        console.log(data);
-
         return data;
     } catch (error) {
         console.log(error);
